@@ -25,31 +25,34 @@ class EncoderDecoder(nn.Module):
         self.encoder = Encoder(input_dim, hidden_dim, device=device)
         self.decoder = Decoder(hidden_dim, output_dim, device=device)
 
-        self.maxlen = maxlen
-        self.output_dim = output_dim
+        self.maxlen = maxlen # <EOS>が出ていなくても強制的に自己回帰を終了する
+        self.output_dim = output_dim # 出力次元 (単語の種類)
 
-    def forward(self, source, target=None, use_teacher_forcing=False):
+    def forward(self,
+                source,                      # 入力文字列
+                target=None,                 # 学習時か推論時か
+                use_teacher_forcing=False):  # 教師学習ありかなしか
         batch_size = source.size(1)
-        if target is not None:
+        if target is not None: # 学習時
             len_target_sequences = target.size(0)
-        else:
+        else: # 推論時
             len_target_sequences = self.maxlen
 
-        _, states = self.encoder(source)
+        _, states = self.encoder(source) # Encoderの最終的な隠れ層の値
 
         y = torch.ones((1, batch_size),
                        dtype=torch.long,
-                       device=self.device)
+                       device=self.device) # BOSのIDを設定
         output = torch.zeros((len_target_sequences,
                               batch_size,
                               self.output_dim),
-                             device=self.device)
+                             device=self.device) # 出力系列
 
         for t in range(len_target_sequences):
             out, states = self.decoder(y, states)
             output[t] = out
 
-            if use_teacher_forcing and target is not None:
+            if use_teacher_forcing and target is not None: # 教師強制
                 y = target[t].unsqueeze(0)
             else:
                 y = out.max(-1)[1]
@@ -77,7 +80,7 @@ class Encoder(nn.Module):
         h, states = self.lstm(x)
         h, _ = pad_packed_sequence(h)
 
-        return h, states
+        return h, states # h:各時刻における隠れ層の値　state:入力系列を全て受け取った後のLSTM層の値
 
 
 class Decoder(nn.Module):
@@ -95,7 +98,7 @@ class Decoder(nn.Module):
         nn.init.orthogonal_(self.lstm.weight_hh_l0)
         nn.init.xavier_normal_(self.out.weight)
 
-    def forward(self, x, states):
+    def forward(self, x, states): # state:EncoderのLSTMの最終状態(DecoderのLSTMの初期値にする)
         x = self.embedding(x)
         h, states = self.lstm(x, states)
         y = self.out(h)
