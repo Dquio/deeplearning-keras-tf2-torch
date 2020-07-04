@@ -53,7 +53,7 @@ class Transformer(nn.Module):
 
         hs = self.encoder(source, mask=mask_source)
 
-        if target is not None:
+        if target is not None: # 学習時
             target = target[:, :-1]
             len_target_sequences = target.size(1)
             mask_target = self.sequence_mask(target).unsqueeze(1)
@@ -64,7 +64,7 @@ class Transformer(nn.Module):
                              mask=mask_target,
                              mask_source=mask_source)
             output = self.out(y)
-        else:
+        else: # 推論時
             batch_size = source.size(0)
             len_target_sequences = self.maxlen
 
