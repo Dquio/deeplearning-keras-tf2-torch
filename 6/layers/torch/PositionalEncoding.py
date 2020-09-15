@@ -27,6 +27,9 @@ class PositionalEncoding(nn.Module):
         return x + pe
 
     def initializer(self):
+        '''
+        pos: 時系列番号
+        '''
         pe = \
             np.array([[pos / np.power(10000, 2 * (i // 2) / self.output_dim)
                        for i in range(self.output_dim)]
